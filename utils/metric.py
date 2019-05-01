@@ -1,5 +1,5 @@
 from termcolor import cprint, colored as c
-
+from sklearn import metrics
 def inc(d, label):
     if label in d:
         d[label] += 1
@@ -29,8 +29,8 @@ def precision_recall(output, target):
         if label not in TP_plus_FP:
             TP_plus_FP[label] = 0
 
-    precision = {label: 0. if TP_plus_FP[label] ==0 else ((TP[label] if label in TP else 0) / float(TP_plus_FP[label])) for label in labels}
-    recall = {label: 0. if TP_plus_FN[label] ==0 else ((TP[label] if label in TP else 0) / float(TP_plus_FN[label])) for label in labels}
+    precision = {label: 0. if TP_plus_FP[label] == 0 else ((TP[label] if label in TP else 0) / float(TP_plus_FP[label])) for label in labels}
+    recall = {label: 0. if TP_plus_FN[label] == 0 else ((TP[label] if label in TP else 0) / float(TP_plus_FN[label])) for label in labels}
     #FPR = {label: 0. if FP_plus_TN[label] ==0 else }
     return precision, recall, TP, TP_plus_FN, TP_plus_FP
 
@@ -43,24 +43,71 @@ def F_score(p, r):
     }
     return f_scores
 
-
-def cal_FPR_TPR_all(predicates_all, target_all):
+def write_cases(predicates_all, target_all):
     FP = 0
     TN = 0
     TP = 0
     FN = 0
+
+    f_FN = open("corpus/1000_FN.txt", "a")
+    f_FP = open("corpus/1000_FP.txt", "a")
+    f_TP = open("corpus/1000_TP.txt", "a")
+    f_TN = open("corpus/1000_TN.txt", "a")
     for i in range(len(predicates_all)):
         if predicates_all[i] == 1 and target_all[i] == 0:
-            FP += 1
-        if predicates_all[i] == 0 and target_all[i] == 0:
-            TN += 1
-        if predicates_all[i] == 1 and target_all[i] == 1:
-            TP += 1
-        if predicates_all[i] == 0 and target_all[i] == 1:
             FN += 1
+
+        if predicates_all[i] == 0 and target_all[i] == 0:
+            TP += 1
+        if predicates_all[i] == 1 and target_all[i] == 1:
+            TN += 1
+        if predicates_all[i] == 0 and target_all[i] == 1:
+            FP += 1
+    print("TP/FP/TN/FN")
+    print(TP, FP, TN, FN)
+
+def cal_metric_all(predicates_all, target_all):
+    FP = 0
+    TN = 0
+    TP = 0
+    FN = 0
+    # for i in range(len(predicates_all)):
+    #     if predicates_all[i] == 1 and target_all[i] == 0:
+    #         FP += 1
+    #     if predicates_all[i] == 0 and target_all[i] == 0:
+    #         TN += 1
+    #     if predicates_all[i] == 1 and target_all[i] == 1:
+    #         TP += 1
+    #     if predicates_all[i] == 0 and target_all[i] == 1:
+    #         FN += 1
+    for i in range(len(predicates_all)):
+        if predicates_all[i] == 1 and target_all[i] == 0:
+            FN += 1
+        if predicates_all[i] == 0 and target_all[i] == 0:
+            TP += 1
+        if predicates_all[i] == 1 and target_all[i] == 1:
+            TN += 1
+        if predicates_all[i] == 0 and target_all[i] == 1:
+            FP += 1
+    print("TP/FP/TN/FN")
+    print(TP, FP, TN, FN)
+
     FPR = FP / (FP + TN)
     TPR = TP / (TP + FN)
-    return FPR, TPR
+    try:
+        precision = TP / (TP + FP)
+    except ZeroDivisionError:
+        precision = 0
+    recall = TP / (TP + FN)
+    try:
+        F1 = 2 * precision * recall / (precision + recall)
+    except ZeroDivisionError:
+        F1 = 0
+    #auc = metrics.auc(FPR, TPR)
+    fpr, tpr, thresholds = metrics.roc_curve(target_all, predicates_all, pos_label=2)
+    auc = metrics.auc(fpr, tpr)
+
+    return FPR, TPR, precision, F1, auc
 
 
 
@@ -97,11 +144,12 @@ if __name__ == '__main__':
 
     import torch
     import torch.autograd as autograd
-    output = [1,1,1,1,1,2,0,2,2,2,2]
+    #output = [1,1,1,1,1,2,0,2,2,2,2]
+    output = [0,1,1,0]
     output = torch.LongTensor(output)
     # target = [0,0,2,1,2,2,1,2,1,2,0]
-
-    target = [1,3,2,3,3,3,3,3,0,3,3]
+    target = [0,0,1,1]
+    #target = [1,3,2,3,3,3,3,3,0,3,3]
 
     target = torch.LongTensor(target)
     output = autograd.Variable(output)
